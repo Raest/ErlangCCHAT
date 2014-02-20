@@ -1,0 +1,80 @@
+-module(client).
+-export([loop/2, initial_state/2]).
+
+-include_lib("./defs.hrl").
+
+%%%%%%%%%%%%%%%
+%%%% Connect
+%%%%%%%%%%%%%%%
+loop(St, {connect, _Server}) ->
+    genserver:request(list_to_atom(_Server), connect),
+	{ok, St} ;
+
+%%%%%%%%%%%%%%%
+%%%% Disconnect
+%%%%%%%%%%%%%%%
+loop(St = #server_st { server = _Server }, disconnect) ->
+     genserver:request(list_to_atom(_Server), disconnect),
+	 {ok, St} ;
+
+%%%%%%%%%%%%%%
+%%% Join
+%%%%%%%%%%%%%%
+loop(St = #server_st { server = _Server },{join,_Channel}) ->
+	genserver:request(list_to_atom(_Server), {join, _Channel}),
+    {ok, St}.
+
+%%%%%%%%%%%%%%%
+%%%% Leave
+%%%%%%%%%%%%%%%
+loop(St = #server_st { server = _Server }, {leave, _Channel}) ->
+	genserver:request(list_to_atom(_Server), {leave, _Channel}),
+     {ok, St}.	
+
+%%%%%%%%%%%%%%%%%%%%%
+%%% Sending messages
+%%%%%%%%%%%%%%%%%%%%%
+loop(St = #server_st { server = _Server }, {msg_from_GUI, _Channel, _Msg}) ->
+	genserver:request(list_to_atom(_Server), {msg_from_GUI,_Channel,_Msg}),
+	{ok, St}.
+
+
+%%%%%%%%%%%%%%
+%%% WhoIam
+%%%%%%%%%%%%%%
+loop(St, whoiam) ->
+    {_Nick, St}.
+
+%%%%%%%%%%
+%%% Nick
+%%%%%%%%%%
+loop(St,{nick,_Nick}) ->
+    #cl_st { nick = _Nick },
+	{ok, St}.
+
+%%%%%%%%%%%%%
+%%% Debug
+%%%%%%%%%%%%%
+loop(St, debug) ->
+    {St, St}.
+
+%%%%%%%%%%%%%%%%%%%%%
+%%%% Incoming message
+%%%%%%%%%%%%%%%%%%%%%
+loop(St = #cl_st { gui = GUIName }, _MsgFromClient) ->
+    {Channel, Name, Msg} = decompose_msg(_MsgFromClient),
+    gen_server:call(list_to_atom(GUIName), {msg_to_GUI, Channel, Name++"> "++Msg}),
+    {ok, St}.
+
+
+% This function will take a message from the client and
+% decomposed in the parts needed to tell the GUI to display
+% it in the right chat room.
+decompose_msg(_MsgFromClient) ->
+    {"", "", ""}.
+
+%%%%%%%%%%%%%%%%%%%%%
+%%%% Initial state
+%%%%%%%%%%%%%%%%%%%%%
+initial_statef(Nick, GUIName) ->
+	#cl_st { gui = GUIName, nick = Nick }.
