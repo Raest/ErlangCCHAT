@@ -17,7 +17,11 @@ loop(St,{leave, _Nick})->
 		true	->	St2 = St#channel_st{users = St#channel_st.users--[_Nick]}, 
 					{ok,St2};
 		false 	->	{{error, user_not_connected, "User not in channel"}, St} 
-	end.
+	end;
+
+loop(St,{message, _Msg}) ->
+	
+	{ok,St}.
 
 initial_state(_Channel) ->
     #channel_st{channel = _Channel, users = []}.

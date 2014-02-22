@@ -42,18 +42,27 @@ loop(St,{join,_Channel}) ->
 			ok -> {ok, St}
 			end
 	end;
-	{ok, St} ;
 
 %%%%%%%%%%%%%%%
 %%%% Leave
 %%%%%%%%%%%%%%%
 loop(St, {leave, _Channel}) ->
-     {ok, St} ;
+ 	Server = St#cl_st.server,
+	case Server of
+	"" -> {{error, user_not_connected, "YOU ARE NOT EVEN CONNECTED"}, St};
+	_ -> 
+		Leave = genserver:request(list_to_atom(St#cl_st.server), {leave, _Channel, St#cl_st.nick}),
+		case Leave of 
+			not_ok -> {{error, user_not_connected, "User is not a member of this channel"}, St};
+			ok -> {ok, St}
+			end
+	end;    
 
 %%%%%%%%%%%%%%%%%%%%%
 %%% Sending messages
 %%%%%%%%%%%%%%%%%%%%%
 loop(St, {msg_from_GUI, _Channel, _Msg}) ->
+     genserver:request(list_to_atom(St#cl_st.server),{message,_Channel,_Msg}),
      {ok, St};
 
 
