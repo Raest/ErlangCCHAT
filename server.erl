@@ -23,8 +23,12 @@ loop(St, {disconnect, _Nick}) ->
 
 loop(St, {join, _Channel, _Nick}) ->
 	case member(_Channel, St#server_st.channels) of
-		true -> genserver:request(list_to_atom(_Channel), {join, list_to_atom(_Nick)}),
-				{ok,St};
+		true -> 
+			Join = genserver:request(list_to_atom(_Channel), {join, list_to_atom(_Nick)}),
+			case Join of
+				error 	-> {error, St};
+				ok 		-> {ok,St}
+			end;
 		false -> 
 		genserver:start(list_to_atom(_Channel), channel:initial_state(_Channel), 
                     fun channel:loop/2),
@@ -35,16 +39,20 @@ loop(St, {join, _Channel, _Nick}) ->
 
 loop(St, {leave, _Channel, _Nick}) ->
 	case member(_Channel, St#server_st.channels) of
-		true -> genserver:request(list_to_atom(_Channel), {leave, list_to_atom(_Nick)}),
-				{ok,St};
-		false -> {{error, user_not_connected, "Channel does not exist"}, St} 
+		true -> 
+		Leave = genserver:request(list_to_atom(_Channel), {leave, list_to_atom(_Nick)}),
+		case Leave of
+			ok -> {ok,St};
+			error -> {error, St}
+		end;
+		false -> {error, St} 
 	end;	
 
-loop(St, {message, _Channel, _Msg}) -> 
+loop(St, {msg_from_GUI, _Channel, _Msg}) -> 
 	case member(_Channel, St#server_st.channels) of
-		true ->	genserver:request(list_to_atom(_Channel),{message, _Msg}),
+		true ->	genserver:request(list_to_atom(_Channel),{msg_from_GUI, _Msg}),
 		{ok,St};
-		false -> {{error, user_not_connected, "Channel does not exist"}, St} 
+		false -> {error, St} 
 	end.	
 
 initial_state(_Server) ->

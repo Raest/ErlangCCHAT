@@ -9,8 +9,8 @@
 loop(St, {connect, _Server}) ->
     Con = genserver:request(list_to_atom(_Server), {connect, St#cl_st.nick}),
 	case Con of 
-	not_ok -> {{error, user_not_connected, "User already connected"}, St};
-	ok -> St2 = St#cl_st{server = _Server}, {ok, St2}
+		not_ok -> {{error, user_not_connected, "User already connected"}, St};
+		ok -> St2 = St#cl_st{server = _Server}, {ok, St2}
 	end;
 
 %%%%%%%%%%%%%%%
@@ -25,7 +25,7 @@ loop(St, disconnect) ->
 		case Dis of 
 			not_ok -> {{error, user_not_connected, "YOU ARE NOT EVEN CONNECTED"}, St};
 			ok -> St2 = St#cl_st{server = ""}, {ok, St2}
-			end
+		end
 	end;
 
 %%%%%%%%%%%%%%
@@ -38,9 +38,9 @@ loop(St,{join,_Channel}) ->
 	_ -> 
 		Join = genserver:request(list_to_atom(St#cl_st.server), {join, _Channel, St#cl_st.nick}),
 		case Join of 
-			not_ok -> {{error, user_not_connected, "User already connected to channel"}, St};
+			error -> {{error, user_not_connected, "User already connected to channel"}, St};
 			ok -> {ok, St}
-			end
+		end
 	end;
 
 %%%%%%%%%%%%%%%
@@ -53,17 +53,20 @@ loop(St, {leave, _Channel}) ->
 	_ -> 
 		Leave = genserver:request(list_to_atom(St#cl_st.server), {leave, _Channel, St#cl_st.nick}),
 		case Leave of 
-			not_ok -> {{error, user_not_connected, "User is not a member of this channel"}, St};
+			error -> {{error, user_not_connected, "User is not a member of this channel"}, St};
 			ok -> {ok, St}
-			end
+		end
 	end;    
 
 %%%%%%%%%%%%%%%%%%%%%
 %%% Sending messages
 %%%%%%%%%%%%%%%%%%%%%
 loop(St, {msg_from_GUI, _Channel, _Msg}) ->
-     genserver:request(list_to_atom(St#cl_st.server),{message,_Channel,_Msg}),
-     {ok, St};
+     Message = genserver:request(list_to_atom(St#cl_st.server),{msg_from_GUI,_Channel,_Msg}),
+     case Message of
+     	ok -> {ok, St};
+     	error -> {{error, user_not_connected, "Channel does not exist"}, St}
+     end;
 
 
 %%%%%%%%%%%%%%
