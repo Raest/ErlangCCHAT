@@ -10,10 +10,12 @@
 % This record defines the structure of the 
 % server process. 
 % 
--record(server_st, {server, users, channels}).
+-record(server_st, {server, userpids, channels}).
 
 
 
-
--record(channel_st, {channel, users}).
+% This record defines the structure of the 
+% channel process. 
+% 
+-record(channel_st, {channel, users, userpids}).
 
