@@ -7,49 +7,49 @@
 %%%%%%%%%%%%%%%
 %%%% Connect
 %%%%%%%%%%%%%%%
-loop(St, {connect, _Pid}) -> 
-	case member(_Pid, St#server_st.userpids) of
+loop(St, {connect, _Nick}) -> 
+	case member(_Nick, St#server_st.users) of
 		true ->  {not_ok, St};
-		false -> St2 = St#server_st{userpids = St#server_st.userpids++[_Pid]},
+		false -> St2 = St#server_st{users = St#server_st.users++[_Nick]},
     	{ok, St2}
 	end;
 
 %%%%%%%%%%%%%%%
 %%%% Disconnect
 %%%%%%%%%%%%%%%	
-loop(St, {disconnect, _Pid}) -> 
-	case member(_Pid, St#server_st.userpids) of
+loop(St, {disconnect, _Nick}) -> 
+	case member(_Nick, St#server_st.users) of
 	false -> {not_ok, St};
-	true ->  St2 = St#server_st{userpids = St#server_st.userpids--[_Pid]},
+	true ->  St2 = St#server_st{users = St#server_st.users--[_Nick]},
     {ok, St2}
 	end;
 
 %%%%%%%%%%%%%%
 %%% Join
 %%%%%%%%%%%%%%
-loop(St, {join, _Channel, _Nick, _CLPID}) ->
+loop(St, {join, _Channel, _Pid}) ->
 	case member(_Channel, St#server_st.channels) of
 		true -> 
-			Join = genserver:request(list_to_atom(_Channel), {join, list_to_atom(_Nick), _CLPID}),
+			Join = genserver:request(list_to_atom(_Channel), {join, _Pid}),
 			case Join of
 				error 	-> {error, St};
 				ok 		-> {ok,St}
-			end;
+		end;
 		false -> 
-		genserver:start(list_to_atom(_Channel), channel:initial_state(_Channel), 
+			genserver:start(list_to_atom(_Channel), channel:initial_state(_Channel), 
                     fun channel:loop/2),
-		St2 = St#server_st{channels = St#server_st.channels++[_Channel]},
-		genserver:request(list_to_atom(_Channel), {join, list_to_atom(_Nick), _CLPID}),
-		{ok, St2}
-	end;
+			St2 = St#server_st{channels = St#server_st.channels++[_Channel]},
+			genserver:request(list_to_atom(_Channel), {join, _Pid}),
+			{ok, St2}
+		end;
 
 %%%%%%%%%%%%%%%
 %%%% Leave
 %%%%%%%%%%%%%%%
-loop(St, {leave, _Channel, _Nick, _CLPID}) ->
+loop(St, {leave, _Channel, _Pid}) ->
 	case member(_Channel, St#server_st.channels) of
 		true -> 
-		Leave = genserver:request(list_to_atom(_Channel), {leave, list_to_atom(_Nick), _CLPID}),
+		Leave = genserver:request(list_to_atom(_Channel), {leave, _Pid}),
 		case Leave of
 			ok -> {ok,St};
 			error -> {error, St}
@@ -60,9 +60,9 @@ loop(St, {leave, _Channel, _Nick, _CLPID}) ->
 %%%%%%%%%%%%%%%
 %%%% Messages
 %%%%%%%%%%%%%%%
-loop(St, {msg_from_GUI, _Channel, _Msg, _Nick, _CLPID}) -> 
+loop(St, {msg_from_GUI, _Channel, _Msg, _Nick, _Pid}) -> 
 	case member(_Channel, St#server_st.channels) of
-		true ->	genserver:request(list_to_atom(_Channel),{msg_from_GUI, _Msg, _Nick, _CLPID}),
+		true ->	genserver:request(list_to_atom(_Channel),{_Msg, _Nick, _Pid}),
 		{ok,St};
 		false -> {error, St} 
 	end.	
@@ -71,4 +71,4 @@ loop(St, {msg_from_GUI, _Channel, _Msg, _Nick, _CLPID}) ->
 %%%% Initial state
 %%%%%%%%%%%%%%%%%%%%%
 initial_state(_Server) ->
-    #server_st{server = _Server, userpids = [], channels = []}.
+    #server_st{server = _Server, users = [], channels = []}.
