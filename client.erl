@@ -1,21 +1,30 @@
 -module(client).
 -export([loop/2, initial_state/2]).
 -include_lib("./defs.hrl").
+-import(lists, [member/2]).
+
 
 %%%%%%%%%%%%%%%
 %%%% Connect
 %%%%%%%%%%%%%%%
+% Takes a server as an input which it then tries to connect to. Since Shire was the specification it is hardcoded. Other ways???
+% Interperts the results from server and gives the apropriate errors.
 loop(St, {connect, _Server}) ->
-    Con = genserver:request(list_to_atom(_Server), {connect, St#cl_st.nick}),
-	case Con of 
-		not_ok -> {{error, user_already_connected, "User already connected"}, St};
-		ok -> St2 = St#cl_st{server = _Server}, {ok, St2};
-		_ -> {{error, server_not_reached, "Server gone, come back later"}, St}
+	case _Server of
+	"shire" ->
+    	Con = genserver:request(list_to_atom(_Server), {connect, St#cl_st.nick}),
+		case Con of 
+			not_ok -> {{error, user_already_connected, "User already connected"}, St};
+			ok -> St2 = St#cl_st{server = _Server}, {ok, St2}
+		end;	
+	_ -> {{error, server_not_reached, "Server gone, come back later"}, St}
 	end;
 
 %%%%%%%%%%%%%%%
 %%%% Disconnect
 %%%%%%%%%%%%%%%
+% Takes no input and similarly to connect the server shire is hardcoded. Appropriate respones are given to the different errors.
+% The corectness test says there are things wrong here. Probably because of the hardcoding. Not sure how to fix this?
 loop(St, disconnect) ->
 	Server = St#cl_st.server,
 	case Server of
@@ -36,6 +45,8 @@ loop(St, disconnect) ->
 %%%%%%%%%%%%%%
 %%% Join
 %%%%%%%%%%%%%%
+% Takes a channel name as an input and tries to join the channel. The server will in turn say if it works or not.
+% errors are then given as need be. If the client is sucsesful in joining the channel the client will keep track of the entry.
 loop(St,{join,_Channel}) ->
 	Server = St#cl_st.server,
 	case Server of
@@ -51,6 +62,8 @@ loop(St,{join,_Channel}) ->
 %%%%%%%%%%%%%%%
 %%%% Leave
 %%%%%%%%%%%%%%%
+% Takes a channel name as an input and tries to leave the channel. The server will in turn say if it works or not.
+% errors are then given as need be. If the client is sucsesful in leaving the channel the client will be uppdated with a new channellist.
 loop(St, {leave, _Channel}) ->
  	Server = St#cl_st.server,
 	case Server of
@@ -66,23 +79,32 @@ loop(St, {leave, _Channel}) ->
 %%%%%%%%%%%%%%%%%%%%%
 %%% Sending messages
 %%%%%%%%%%%%%%%%%%%%%
+% Takes a channel and a message as input and sends it. If the server is unsucessful it will return appropriate errors.
 loop(St, {msg_from_GUI, _Channel, _Msg}) ->
-     Message = genserver:request(list_to_atom(St#cl_st.server),{msg_from_GUI,_Channel,_Msg,St#cl_st.nick,self()}),
-     case Message of
-     	ok -> {ok, St};
-     	error -> {{error, user_not_joined, "Channel does not exist"}, St}
-     end;
+     case member(_Channel, St#cl_st.channels) of
+     	true ->	
+    	Message = genserver:request(list_to_atom(St#cl_st.server),{msg_from_GUI,_Channel,_Msg,St#cl_st.nick,self()}),
+     	case Message of
+     		ok -> {ok, St};
+     		error -> {{error, user_not_joined, "Channel does not exist"}, St}
+    	end;
+    	false -> {{error, user_not_joined, "Channel does not exist"}, St}
+	 end;
+
+
 
 
 %%%%%%%%%%%%%%
 %%% WhoIam
 %%%%%%%%%%%%%%
+% Returns the name of the user which is stored in the client process
 loop(St, whoiam) ->
 	{St#cl_st.nick, St};
 
 %%%%%%%%%%
 %%% Nick
 %%%%%%%%%%
+% Changes the the name of the client process
 loop(St,{nick,_Nick}) ->
     {ok, St#cl_st{ nick = _Nick }};
 
@@ -95,7 +117,7 @@ loop(St, debug) ->
 %%%%%%%%%%%%%%%%%%%%%
 %%%% Incoming message
 %%%%%%%%%%%%%%%%%%%%%
-% What does _MsgFromClient want as an input?
+% Recieves strings of channel, nick and message which is sent to the GUI.
 loop(St = #cl_st { gui = GUIName }, {_Chan, _Nick, _Msg}) ->
     %{Channel, Name, Msg} = decompose_msg(_MsgFromClient),
     gen_server:call(list_to_atom(GUIName), {msg_to_GUI, _Chan, _Nick++"> "++_Msg}),
@@ -114,5 +136,6 @@ loop(St = #cl_st { gui = GUIName }, {_Chan, _Nick, _Msg}) ->
 %%%%%%%%%%%%%%%%%%%%%
 %%%% Initial state
 %%%%%%%%%%%%%%%%%%%%%
+% Initial state with inital variables set as empty and will be assigned as they are needed/used.
 initial_state(Nick, GUIName) ->
     #cl_st { gui = GUIName, nick = Nick, server = "", channels=[]}.
