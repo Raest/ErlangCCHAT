@@ -10,15 +10,12 @@
 % Takes a server as an input which it then tries to connect to. Since Shire was the specification it is hardcoded. Other ways???
 % Interperts the results from server and gives the apropriate errors.
 loop(St, {connect, _Server}) ->
-	case _Server of
-	"shire" ->
-    	Con = genserver:request(list_to_atom(_Server), {connect, St#cl_st.nick}),
-		case Con of 
-			not_ok -> {{error, user_already_connected, "User already connected"}, St};
-			ok -> St2 = St#cl_st{server = _Server}, {ok, St2}
-		end;	
-	_ -> {{error, server_not_reached, "Server gone, come back later"}, St}
-	end;
+    Con = (catch(genserver:request(list_to_atom(_Server), {connect, St#cl_st.nick}))),
+	case Con of 
+		{'EXIT',_} -> {{error, server_not_reached, "Server gone, come back later"}, St};
+		not_ok -> {{error, user_already_connected, "User already connected"}, St};
+		ok -> St2 = St#cl_st{server = _Server}, {ok, St2}
+	end;	
 
 %%%%%%%%%%%%%%%
 %%%% Disconnect
@@ -29,17 +26,17 @@ loop(St, disconnect) ->
 	Server = St#cl_st.server,
 	case Server of
 	"" -> {{error, user_not_connected, "YOU ARE NOT EVEN CONNECTED"}, St};
-	"shire" -> 
+	_ -> 
 		case length(St#cl_st.channels) of
 		0 ->
-			Dis = genserver:request(list_to_atom(St#cl_st.server), {disconnect, St#cl_st.nick}),
+			Dis = (catch(genserver:request(list_to_atom(St#cl_st.server), {disconnect, St#cl_st.nick}))),
 			case Dis of 
+				{'EXIT',_} -> {{error, server_not_reached, "Something went VERYVERY wrong"}, St};
 				not_ok -> {{error, user_not_connected, "YOU ARE NOT EVEN CONNECTED"}, St};
 				ok -> St2 = St#cl_st{server = ""}, {ok, St2}
 			end;
 		_ -> {{error, leave_channels_first, "Leave your channels though guy!"}, St}
-		end;
-	_ -> {{error, server_not_reached, "Something went VERYVERY wrong"}, St}
+		end
 	end;
 
 %%%%%%%%%%%%%%

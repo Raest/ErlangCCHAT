@@ -42,8 +42,11 @@ loop(St,{_Msg, _Nick, _Pid}) ->
 % Iterator that is used to start client processes so they send messages to their respective GUIs.	
 iterate([], _Msg) -> ok;
 iterate([H|T], _Msg) ->
-	genserver:request(H, _Msg),
+	spawn(fun() -> send(H,_Msg) end),
 	iterate(T, _Msg).
+
+send(_Pid, _Msg) ->
+	genserver:request(_Pid, _Msg).
 
 %%%%%%%%%%%%%%%%%%%%%
 %%%% Initial state
