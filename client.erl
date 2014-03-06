@@ -12,9 +12,9 @@
 loop(St, {connect, _Server}) ->
     Con = (catch(genserver:request(list_to_atom(_Server), {connect, St#cl_st.nick}))),
 	case Con of 
-		{'EXIT',_} -> {{error, server_not_reached, "Server gone, come back later"}, St};
 		not_ok -> {{error, user_already_connected, "User already connected"}, St};
-		ok -> St2 = St#cl_st{server = _Server}, {ok, St2}
+		ok -> St2 = St#cl_st{server = _Server}, {ok, St2};
+		{'EXIT',_} -> {{error, server_not_reached, "Server gone, come back later"}, St}
 	end;	
 
 %%%%%%%%%%%%%%%
